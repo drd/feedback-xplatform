@@ -7,6 +7,9 @@
 //
 
 import Cocoa
+import MetalKit
+import QuartzCore
+
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {
