@@ -10,15 +10,6 @@ import MetalKit
 
 let SIZE = 8192
 
-struct Vertex {
-    var x, y, z: Float
-}
-
-struct Triangle {
-    var v1, v2, v3: Vertex
-    var modelMatrix: float4x4
-}
-
 class Feedbackian {
     
     // MARK: ivars
@@ -63,8 +54,6 @@ class Feedbackian {
                              nonlinearity: 0.0,
                              projectionMatrix: float4x4())
 
-    var triangles = [Triangle]()
-
     var projectionMatrix: float4x4!
     
     var positionX:Float = 0.0
@@ -85,6 +74,7 @@ class Feedbackian {
 
     var controls = Controls()
     var keySet: Set<Key>
+    var shape: Shape = CachedShape(shape: OutlinedPolygon(sides: 3, length: 0.7, width: 0.05))
     
     // MARK: constructor
     
@@ -143,21 +133,26 @@ class Feedbackian {
     
     func copyShapeToBuffer() {
         var outTriangles = [Vertex]()
+        let triangles = shape.geometry
         triangles.enumerated().forEach { (i, triangle) in
-            let rX = Float(i) / Float(triangles.count) * Float.pi + state.time / 3.1
-            let rY = Float(i) / Float(triangles.count) * Float.pi + Float.pi / 3 + state.time / 2.33
-            let rZ = Float(i) / Float(triangles.count) * Float.pi + 2 * Float.pi / 3 + state.time  / 3.71
-            var matrix = float4x4()
-            matrix.rotateAroundX(rX, y: rY, z: rZ)
-            let v1 = triangle.v1
-            let v2 = triangle.v2
-            let v3 = triangle.v3
-            var rotated = matrix * float4(v1.x, v1.y, v1.z, 1)
-            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-            rotated = matrix * float4(v2.x, v2.y, v2.z, 1)
-            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-            rotated = matrix * float4(v3.x, v3.y, v3.z, 1)
-            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
+            outTriangles.append(triangle.v1)
+            outTriangles.append(triangle.v2)
+            outTriangles.append(triangle.v3)
+//            let rX = Float(i) / Float(triangles.count) * Float.pi + state.time / 3.1
+//            let rY = Float(i) / Float(triangles.count) * Float.pi + Float.pi / 3 + state.time / 2.33
+//            let rZ = Float(i) / Float(triangles.count) * Float.pi + 2 * Float.pi / 3 + state.time  / 3.71
+//            var matrix = float4x4()
+//            matrix.rotateAroundX(rX, y: rY, z: rZ)
+//            let v1 = triangle.v1
+//            let v2 = triangle.v2
+//            let v3 = triangle.v3
+//            var rotated = matrix * float4(v1.x, v1.y, v1.z, 1)
+//            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
+//            rotated = matrix * float4(v2.x, v2.y, v2.z, 1)
+//            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
+//            rotated = matrix * float4(v3.x, v3.y, v3.z, 1)
+//            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
+
 //            let outTriangle = Triangle(
 //                v1: triangle.v1,
 //                v2: triangle.v2,
@@ -217,11 +212,6 @@ class Feedbackian {
         // Screenshot?
         if keySet.contains(.Return) {
             toggleRecording()
-            
-            // TODO: investigate blit encoder, this no bueno
-//            commandBuffer.addCompletedHandler { commandBuffer in
-//                self.writeFrame(forTexture: self.mainTexture)
-//            }
             keySet.remove(.Return)
         }
 
@@ -422,8 +412,7 @@ class Feedbackian {
                                                 options: MTLResourceOptions())
         textureVertexBuffer.label = "Texture vertBuffer"
         
-        makeShape()
-        
+        let triangles = shape.geometry
         let shapeDataSize = triangles.count * 3 * MemoryLayout<Vertex>.size
         shapeVertexBuffer = device.makeBuffer(bytes: triangles,
                                               length: shapeDataSize,
@@ -434,67 +423,7 @@ class Feedbackian {
                                            options: MTLResourceOptions())
         uniformsBuffer.label = "Uniforms"
     }
-    
-    private func makeShape() {
 
-        let dt = 0.1
-        let base1 = 0.2, base2 = 0.4
-
-        for theta in stride(from: 0.0, to: .pi * 2, by: dt) {
-            var r1 = base1 + drand48() * 0.1 - 0.05
-            var r2 = base2 + drand48() * 0.1 - 0.05
-            let v1 = Vertex(
-                x: Float(cos(theta) * r1),
-                y: Float(sin(theta) * r1),
-                z: 0.0
-            )
-            
-            let v2 = Vertex(
-                x: Float(cos(theta + dt / 2) * r2),
-                y: Float(sin(theta + dt / 2) * r2),
-                z: 0.0
-            )
-
-            let v3 = Vertex(
-                x: Float(cos(theta - dt / 2) * r2),
-                y: Float(sin(theta - dt / 2) * r2),
-                z: 0.0
-            )
-
-            triangles.append(Triangle(
-                v1: v1,
-                v2: v2,
-                v3: v3,
-                modelMatrix: float4x4()))
-
-            r1 = base1 + drand48() * 0.1 - 0.05
-            r2 = base2 + drand48() * 0.1 - 0.05
-
-            let v4 = Vertex(
-                x: Float(cos(theta) * r1),
-                y: Float(sin(theta) * r1),
-                z: 0.0
-            )
-            
-            let v5 = Vertex(
-                x: Float(cos(theta + dt) * r1),
-                y: Float(sin(theta + dt) * r1),
-                z: 0.0
-            )
-            
-            let v6 = Vertex(
-                x: Float(cos(theta + dt / 2) * r2),
-                y: Float(sin(theta + dt / 2) * r2),
-                z: 0.0
-            )
-            
-            triangles.append(Triangle(
-                v1: v4,
-                v2: v5,
-                v3: v6,
-                modelMatrix: float4x4()))
-        }
-    }
     
     // MARK: Screenshots & recording    
     func toggleRecording() {

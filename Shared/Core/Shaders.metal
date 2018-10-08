@@ -38,17 +38,18 @@ vertex VertexOut shape_vertex(const device ShapeVertex* vertex_array [[ buffer(0
                               unsigned int vid [[ vertex_id ]]) {
     float time = state.time;
     VertexOut vout;
-    float3 anchor = vertex_array[vid - vid % 3].position;
-    float3 vert = vertex_array[vid].position - anchor;
-    
-    float rotation = state.rotation;
-    float x = vert.x * cos(rotation) - vert.y * sin(rotation);
-    float y = vert.x * sin(rotation) + vert.y * cos(rotation);
-    vert = float3(x, y, vert.z) + anchor;
-    
-    float scale = cos(sin(time * 1.13)) * 0.9 + 1.1;
-    float3 offset = float3(0, 0, 0);
-    vout.position = state.projectionMatrix * float4(vert * scale + offset, 1.0);
+//    float3 anchor = vertex_array[vid - vid % 3].position;
+//    float3 vert = vertex_array[vid].position - anchor;
+//
+//    float rotation = state.rotation;
+//    float x = vert.x * cos(rotation) - vert.y * sin(rotation);
+//    float y = vert.x * sin(rotation) + vert.y * cos(rotation);
+//    vert = float3(x, y, vert.z) + anchor;
+//
+//    float scale = cos(sin(time * 1.13)) * 0.9 + 1.1;
+//    float3 offset = float3(0, 0, 0);
+//    vout.position = state.projectionMatrix * float4(vert * scale + offset, 1.0);
+    vout.position = float4(vertex_array[vid].position, 1);
     vout.vid = vid;
     return vout;
 }

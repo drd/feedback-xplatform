@@ -190,8 +190,7 @@ class Controls {
         \FeedbackState.linearity   : ([.Comma],    [.Period],     \FeedbackState.dL),
     ]
     
-    let ANIMATION_FRAMES = 100
-    let DD: Float = 0.0005
+    let DD: Float = 0.00005
     let MAX: Float = 0.1
     let FALLOFF: Float = 0.95
     
@@ -209,9 +208,7 @@ class Controls {
     
     var presets: [Key: FeedbackState] = [:]
     var lastStored: Key?
-    var animationFrames = 0
-    var animateFrom: FeedbackState! = nil
-    var animateTo: FeedbackState! = nil
+    var transition: Transition?
 
     // TODO: Controls sould have a State, or operate on a State?
     init() {
@@ -250,11 +247,17 @@ class Controls {
 //            animationFrames = 0
 //        }
 
-        if (animationFrames > 0) {
-            animationFrames -= 1
-            let easingAmount = Curve.cubic.easeInOut(Float(ANIMATION_FRAMES - animationFrames) / Float(ANIMATION_FRAMES))
-            state = animateFrom + (animateTo - animateFrom) * easingAmount
+        if let currentTransition = transition {
+            if !currentTransition.complete {
+                state = currentTransition.advance()
+            }
         }
+        
+//        if (animationFrames > 0) {
+//            animationFrames -= 1
+//            let easingAmount = Curve.cubic.easeInOut(Float(ANIMATION_FRAMES - animationFrames) / Float(ANIMATION_FRAMES))
+//            state = animateFrom + (animateTo - animateFrom) * easingAmount
+//        }
 
         if (keysDown.contains(.Tab)) {
             mouseMode = mouseMode == .zoom ? .pan : .zoom
@@ -268,10 +271,12 @@ class Controls {
             let propertyKeyPath = pair.key
             let (decr, incr, deltaKeyPath) = pair.value
             
+            let dd = DD * (keysDown.contains(.Shift) ? 10.0 : 1.0)
+            
             if decr.intersection(keysDown).isNonEmpty {
-                state[keyPath: deltaKeyPath] -= DD
+                state[keyPath: deltaKeyPath] -= dd
             } else if incr.intersection(keysDown).isNonEmpty {
-                state[keyPath: deltaKeyPath] += DD
+                state[keyPath: deltaKeyPath] += dd
             } else {
                 state[keyPath: deltaKeyPath] *= FALLOFF
             }
@@ -301,9 +306,57 @@ class Controls {
     func recallPreset(for key: Key) {
         if let storedState = presets[key] {
             print("Updating state to \(storedState)")
-            animationFrames = ANIMATION_FRAMES
-            animateFrom = state
-            animateTo = storedState
+            if (self.transition?.complete == false) {
+                self.transition = Transition(from: self.transition!, to: storedState)
+            } else {
+                self.transition = Transition(from: state, to: storedState)
+            }
+//            // TODO: compose transitions
+//            animationFrames = ANIMATION_FRAMES
+//            animateFrom = state
+//            animateTo = storedState
         }
     }
 }
+
+let ANIMATION_FRAMES = 180
+
+class Transition {
+    let fromState: FeedbackState?
+    let fromTransition: Transition?
+    let to: FeedbackState
+
+    var frameCount = 0
+    
+    var complete: Bool {
+        return frameCount == ANIMATION_FRAMES
+    }
+    
+    var easingAmount: Float {
+        return Curve.cubic.easeInOut(Float(frameCount) / Float(ANIMATION_FRAMES))
+    }
+    
+    init(from: FeedbackState, to: FeedbackState) {
+        self.fromState = from
+        self.fromTransition = nil
+        self.to = to
+    }
+    
+    init(from: Transition, to: FeedbackState) {
+        self.fromState = nil
+        self.fromTransition = from
+        self.to = to
+    }
+    
+    func advance() -> FeedbackState {
+        if (self.complete) {
+            return self.to
+        }
+
+        let from = fromTransition?.advance() ?? fromState!
+        let nextState = from + (to - from) * self.easingAmount
+        frameCount += 1
+        return nextState
+    }
+}
+
