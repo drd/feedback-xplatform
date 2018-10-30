@@ -7,27 +7,7 @@
 //
 
 import Foundation
-
-struct Vertex {
-    init (_ x: Float, _ y: Float, _ z: Float) {
-        self.x = x
-        self.y = y
-        self.z = z
-    }
-    
-    init (x: Float, y: Float, z: Float) {
-        self.x = x
-        self.y = y
-        self.z = z
-    }
-    
-    var x, y, z: Float
-}
-
-struct Triangle {
-    var v1, v2, v3: Vertex
-    var modelMatrix: float4x4
-}
+import simd
 
 protocol Shape {
     var geometry: [Triangle] { get }
@@ -71,8 +51,10 @@ class OutlinedPolygon : Shape {
             let outer = Vertex(cos(theta) * outerRadius, sin(theta) * outerRadius, 0)
             let inner = Vertex(cos(theta) * innerRadius, sin(theta) * innerRadius, 0)
             
-            triangles.append(Triangle(v1: outer0, v2: inner0, v3: outer, modelMatrix: modelMatrix))
-            triangles.append(Triangle(v1: outer, v2: inner0, v3: inner, modelMatrix: modelMatrix))
+            triangles.append(contentsOf: [
+                Triangle(v1: outer0, v2: inner0, v3: outer, modelMatrix: modelMatrix),
+                Triangle(v1: outer, v2: inner0, v3: inner, modelMatrix: modelMatrix)
+            ])
             
             outer0 = outer
             inner0 = inner
@@ -82,6 +64,7 @@ class OutlinedPolygon : Shape {
     }
 }
 
+let modelMatrix = float4x4()
 
 class DiscOfShards : Shape {
     var geometry: [Triangle] {
@@ -149,3 +132,68 @@ class DiscOfShards : Shape {
     }
 }
 
+
+func quad(_ v1: float3, _ v2: float3, _ v3: float3, _ v4: float3, _ modelMatrix: float4x4) -> [Triangle] {
+    return [
+        Triangle(v1, v2, v3, modelMatrix: modelMatrix),
+        Triangle(v1, v3, v4, modelMatrix: modelMatrix)
+    ]
+}
+
+
+class ParametricCurve : Shape {
+    var geometry: [Triangle] {
+        let modelMatrix = float4x4()
+
+        let sides = 10
+        let dtt = .pi * 2 / Float(sides)
+        let dt = Float(0.03)
+
+        return stride(from: dt, to: 2 * .pi, by: dt).reduce([Triangle](), { triangles, t in
+            let v0 = vertexAt(t - dt)
+            let v1 = vertexAt(t)
+
+            let tangent = (v1 - v0).normalized
+            do {
+                let r0 = try tangent.arbitraryPerpendicular() * 0.1
+                var r1 = r0
+                
+                return stride(from: dtt, to: 2 * .pi + dtt, by: dtt).reduce(triangles, { ts, tt in
+                    let m = tangent.axisRotationMatrix(theta: tt)
+                    let rr = r0.homogenized * m // * 0.1
+                    
+                    defer { r1 = rr.xyz }
+                    
+                    // yucko back-indexing is horrible. maybe there's a nicer swift
+                    // syntax for relative-to-end indices?
+                    
+                    // this will get the value of v1+r1 at the last index
+                    let lastV0r1 = ts.count > sides * 2
+                        ? ts[ts.count - sides * 2 + 1].v3.asFloat3
+                        : v0 + r1
+
+                    // this will get the value of v1+rr.xyz at the last index
+                    let lastV0r2 = ts.count > sides * 2
+                        ? ts[ts.count - sides * 2].v3.asFloat3
+                        : v0 + rr.xyz
+
+                    return ts + quad(
+                        lastV0r1,
+                        lastV0r2,
+                        v1 + rr.xyz,
+                        v1 + r1,
+                        modelMatrix)
+                })
+            } catch {
+                return triangles
+            }
+        })
+    }
+
+    func vertexAt(_ t: Float) -> float3 {
+        return float3(
+            x: 0.3 * sin(5 * t),
+            y: 0.3 * cos(-3 * t),
+            z: 0.3 * sin(3 * t))
+    }
+}

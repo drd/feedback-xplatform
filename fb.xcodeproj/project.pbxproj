@@ -11,6 +11,9 @@
 		2C33ECD5216088400003FB08 /* Easing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C33ECD3216086970003FB08 /* Easing.swift */; };
 		2C33ECD6216088410003FB08 /* Easing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C33ECD3216086970003FB08 /* Easing.swift */; };
 		2C5A0FA320EAFF0600F4BEAF /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2C5A0FA220EAFF0600F4BEAF /* CoreMotion.framework */; };
+		2C71033121779EAD00C247E4 /* Geometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C71033021779EAD00C247E4 /* Geometry.swift */; };
+		2C71033221779EAD00C247E4 /* Geometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C71033021779EAD00C247E4 /* Geometry.swift */; };
+		2C71033321779EAD00C247E4 /* Geometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C71033021779EAD00C247E4 /* Geometry.swift */; };
 		2C995320216998530088A11C /* Shards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C99531F216998530088A11C /* Shards.swift */; };
 		2C995323216998C10088A11C /* Shapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C9953212169986D0088A11C /* Shapes.swift */; };
 		2C995324216998C10088A11C /* Shapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C9953212169986D0088A11C /* Shapes.swift */; };
@@ -62,6 +65,7 @@
 /* Begin PBXFileReference section */
 		2C33ECD3216086970003FB08 /* Easing.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Easing.swift; sourceTree = "<group>"; };
 		2C5A0FA220EAFF0600F4BEAF /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS11.4.sdk/System/Library/Frameworks/CoreMotion.framework; sourceTree = DEVELOPER_DIR; };
+		2C71033021779EAD00C247E4 /* Geometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geometry.swift; sourceTree = "<group>"; };
 		2C99531F216998530088A11C /* Shards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shards.swift; sourceTree = "<group>"; };
 		2C9953212169986D0088A11C /* Shapes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shapes.swift; sourceTree = "<group>"; };
 		2CE4199720EAE44B00C481BA /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
@@ -161,6 +165,7 @@
 			children = (
 				2C99531F216998530088A11C /* Shards.swift */,
 				2C9953212169986D0088A11C /* Shapes.swift */,
+				2C71033021779EAD00C247E4 /* Geometry.swift */,
 			);
 			path = Shapes;
 			sourceTree = "<group>";
@@ -377,6 +382,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2C995320216998530088A11C /* Shards.swift in Sources */,
+				2C71033121779EAD00C247E4 /* Geometry.swift in Sources */,
 				2CE419FE20EAE5FC00C481BA /* Keys.swift in Sources */,
 				2CE419F020EAE5D100C481BA /* Events.swift in Sources */,
 				2CE419C920EAE44F00C481BA /* Shaders.metal in Sources */,
@@ -397,6 +403,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2CE419FF20EAE5FD00C481BA /* Keys.swift in Sources */,
+				2C71033221779EAD00C247E4 /* Geometry.swift in Sources */,
 				2CE419CA20EAE44F00C481BA /* Shaders.metal in Sources */,
 				2CE419F220EAE5D600C481BA /* BufferProvider.swift in Sources */,
 				2CE419F420EAE5DB00C481BA /* float4x4+Extensions.swift in Sources */,
@@ -417,6 +424,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2CE419EF20EAE5AC00C481BA /* Events.swift in Sources */,
+				2C71033321779EAD00C247E4 /* Geometry.swift in Sources */,
 				2CE419F320EAE5D700C481BA /* BufferProvider.swift in Sources */,
 				2CE419FD20EAE5DC00C481BA /* Uniforms.swift in Sources */,
 				2CE419FB20EAE5DC00C481BA /* Metallic.swift in Sources */,

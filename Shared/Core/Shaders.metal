@@ -26,6 +26,7 @@ struct VertexIn {
 struct VertexOut {
     float4 position [[position]];
     float2 texCoord;
+    half4 color;
     unsigned int vid;
 };
 
@@ -49,6 +50,17 @@ vertex VertexOut shape_vertex(const device ShapeVertex* vertex_array [[ buffer(0
 //    float scale = cos(sin(time * 1.13)) * 0.9 + 1.1;
 //    float3 offset = float3(0, 0, 0);
 //    vout.position = state.projectionMatrix * float4(vert * scale + offset, 1.0);
+
+    time = state.time + vid / 13.0 + state.colorOffset;
+    //    float4 pos = vert.position;
+    
+    float r = .4 * (sin(time/1.3 - 1.2) + 1) / 2 + (sin(time / 317 ) - cos(time / 3 / 153) / 2) / 2.7;
+    float g = .6 * (sin(time/1.7 + 2.3) + 1) / 2 + abs(cos(sin(time) / 209 + cos(time / 2 ))) / 2.9;
+    float b = .7 * (sin(time/2.1 + 1.1) + 1) / 2 + + (cos(time / 100 - time / 31 + sin(time  * 17))) / 2.3;
+    float a = (1 - cos(time / 69 + sin(time / 29))) / 3 + .3;
+
+    vout.color = half4(half3(r, g, b) + (sin(time * 3.12) + 0.7) * 0.4, a);
+    
     vout.position = float4(vertex_array[vid].position, 1);
     vout.vid = vid;
     return vout;
@@ -56,14 +68,15 @@ vertex VertexOut shape_vertex(const device ShapeVertex* vertex_array [[ buffer(0
 
 fragment half4 shape_fragment(VertexOut vert [[ stage_in ]],
                               const device State& state [[ buffer(0) ]]) {
-    float time = state.time + vert.vid / 13.0 + state.colorOffset;
+//    float time = state.time + vert.vid / 13.0 + state.colorOffset;
     //    float4 pos = vert.position;
-    
-    float r = .4 * (sin(time/1.3 - 1.2) + 1) / 2 + (sin(time / 317 ) - cos(time / 3 / 153) / 2) / 2.7;
-    float g = .6 * (sin(time/1.7 + 2.3) + 1) / 2 + abs(cos(sin(time) / 209 + cos(time / 2 ))) / 2.9;
-    float b = .7 * (sin(time/2.1 + 1.1) + 1) / 2 + + (cos(time / 100 - time / 31 + sin(time  * 17))) / 2.3;
-    float a = (1 - cos(time / 69 + sin(time / 29))) / 3 + .3;
-    return half4(half3(r, g, b) + (sin(time * 3.12) + 0.7) * 0.4, a);
+//
+//    float r = .4 * (sin(time/1.3 - 1.2) + 1) / 2 + (sin(time / 317 ) - cos(time / 3 / 153) / 2) / 2.7;
+//    float g = .6 * (sin(time/1.7 + 2.3) + 1) / 2 + abs(cos(sin(time) / 209 + cos(time / 2 ))) / 2.9;
+//    float b = .7 * (sin(time/2.1 + 1.1) + 1) / 2 + + (cos(time / 100 - time / 31 + sin(time  * 17))) / 2.3;
+//    float a = (1 - cos(time / 69 + sin(time / 29))) / 3 + .3;
+//    return half4(half3(r, g, b) + (sin(time * 3.12) + 0.7) * 0.4, a);
+    return vert.color;
 }
 
 vertex VertexOut texture_vertex(const device VertexIn* vertex_array [[ buffer(0) ]],

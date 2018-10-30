@@ -74,7 +74,8 @@ class Feedbackian {
 
     var controls = Controls()
     var keySet: Set<Key>
-    var shape: Shape = CachedShape(shape: OutlinedPolygon(sides: 3, length: 0.7, width: 0.05))
+    var sides = 3
+    var shape: Shape = CachedShape(shape: ParametricCurve()) //OutlinedPolygon(sides: 3, length: 0.7, width: 0.05))
     
     // MARK: constructor
     
@@ -114,6 +115,34 @@ class Feedbackian {
         state.colorOffset = controls.colorOffset
         state.nonlinearity = controls.linearity // Float(sin(state.time))
         state.projectionMatrix = modelMatrix()
+        
+        if keySet.contains(.Comma) {
+            sides -= 1
+            if (sides < 3) {
+                sides = 3
+            }
+            shape = CachedShape(shape: OutlinedPolygon(sides: sides, length: 0.7, width: 0.05))
+            let triangles = shape.geometry
+            let shapeDataSize = triangles.count * 3 * MemoryLayout<Vertex>.size
+            shapeVertexBuffer = device.makeBuffer(bytes: triangles,
+                                                  length: shapeDataSize,
+                                                  options: MTLResourceOptions())
+            shapeVertexBuffer.label = "Shape vertBuffer"
+
+        } else if keySet.contains(.Period) {
+            sides += 1
+            if (sides < 3) {
+                sides = 3
+            }
+            shape = CachedShape(shape: OutlinedPolygon(sides: sides, length: 0.7, width: 0.05))
+            let triangles = shape.geometry
+            let shapeDataSize = triangles.count * 3 * MemoryLayout<Vertex>.size
+            shapeVertexBuffer = device.makeBuffer(bytes: triangles,
+                                                  length: shapeDataSize,
+                                                  options: MTLResourceOptions())
+            shapeVertexBuffer.label = "Shape vertBuffer"
+
+        }
     }
     
     func modelMatrix() -> float4x4 {
@@ -134,10 +163,25 @@ class Feedbackian {
     func copyShapeToBuffer() {
         var outTriangles = [Vertex]()
         let triangles = shape.geometry
+
+        let rX = state.time / 3.1
+        let rY = Float.pi / 3 + state.time / 2.33
+        let rZ = 2 * Float.pi / 3 + state.time  / 3.71
+        var matrix = float4x4()
+        matrix.translate(0, y: 0, z: 0.3)
+        matrix.rotateAroundX(rX, y: rY, z: rZ)
+
         triangles.enumerated().forEach { (i, triangle) in
-            outTriangles.append(triangle.v1)
-            outTriangles.append(triangle.v2)
-            outTriangles.append(triangle.v3)
+            let v1 = triangle.v1
+            let v2 = triangle.v2
+            let v3 = triangle.v3
+            var rotated = matrix * float4(v1.x, v1.y, v1.z, 1)
+            
+            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
+            rotated = matrix * float4(v2.x, v2.y, v2.z, 1)
+            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
+            rotated = matrix * float4(v3.x, v3.y, v3.z, 1)
+            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
 //            let rX = Float(i) / Float(triangles.count) * Float.pi + state.time / 3.1
 //            let rY = Float(i) / Float(triangles.count) * Float.pi + Float.pi / 3 + state.time / 2.33
 //            let rZ = Float(i) / Float(triangles.count) * Float.pi + 2 * Float.pi / 3 + state.time  / 3.71
