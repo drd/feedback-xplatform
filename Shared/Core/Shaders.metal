@@ -11,11 +11,13 @@ struct State {
     float colorOffset;
     float nonlinearity;
     float4x4 projectionMatrix;
-    //    Light light;
+    float4 light;
 };
 
 struct ShapeVertex {
-    packed_float3 position;
+    packed_float4 position;
+    packed_float4 normal;
+    packed_float4 color;
 };
 
 struct VertexIn {
@@ -25,8 +27,9 @@ struct VertexIn {
 
 struct VertexOut {
     float4 position [[position]];
+    float4 normal;
     float2 texCoord;
-    half4 color;
+    float4 color;
     unsigned int vid;
 };
 
@@ -37,46 +40,24 @@ struct FragmentOut {
 vertex VertexOut shape_vertex(const device ShapeVertex* vertex_array [[ buffer(0) ]],
                               const device State& state [[ buffer(1) ]],
                               unsigned int vid [[ vertex_id ]]) {
-    float time = state.time;
     VertexOut vout;
-//    float3 anchor = vertex_array[vid - vid % 3].position;
-//    float3 vert = vertex_array[vid].position - anchor;
-//
-//    float rotation = state.rotation;
-//    float x = vert.x * cos(rotation) - vert.y * sin(rotation);
-//    float y = vert.x * sin(rotation) + vert.y * cos(rotation);
-//    vert = float3(x, y, vert.z) + anchor;
-//
-//    float scale = cos(sin(time * 1.13)) * 0.9 + 1.1;
-//    float3 offset = float3(0, 0, 0);
-//    vout.position = state.projectionMatrix * float4(vert * scale + offset, 1.0);
 
-    time = state.time + vid / 13.0 + state.colorOffset;
-    //    float4 pos = vert.position;
+    vout.position = state.projectionMatrix * float4(vertex_array[vid].position);
+    vout.normal = state.projectionMatrix * float4(vertex_array[vid].normal);
+    vout.color = vertex_array[vid].color;
     
-    float r = .4 * (sin(time/1.3 - 1.2) + 1) / 2 + (sin(time / 317 ) - cos(time / 3 / 153) / 2) / 2.7;
-    float g = .6 * (sin(time/1.7 + 2.3) + 1) / 2 + abs(cos(sin(time) / 209 + cos(time / 2 ))) / 2.9;
-    float b = .7 * (sin(time/2.1 + 1.1) + 1) / 2 + + (cos(time / 100 - time / 31 + sin(time  * 17))) / 2.3;
-    float a = (1 - cos(time / 69 + sin(time / 29))) / 3 + .3;
-
-    vout.color = half4(half3(r, g, b) + (sin(time * 3.12) + 0.7) * 0.4, a);
-    
-    vout.position = float4(vertex_array[vid].position, 1);
     vout.vid = vid;
     return vout;
 }
 
 fragment half4 shape_fragment(VertexOut vert [[ stage_in ]],
                               const device State& state [[ buffer(0) ]]) {
-//    float time = state.time + vert.vid / 13.0 + state.colorOffset;
-    //    float4 pos = vert.position;
-//
-//    float r = .4 * (sin(time/1.3 - 1.2) + 1) / 2 + (sin(time / 317 ) - cos(time / 3 / 153) / 2) / 2.7;
-//    float g = .6 * (sin(time/1.7 + 2.3) + 1) / 2 + abs(cos(sin(time) / 209 + cos(time / 2 ))) / 2.9;
-//    float b = .7 * (sin(time/2.1 + 1.1) + 1) / 2 + + (cos(time / 100 - time / 31 + sin(time  * 17))) / 2.3;
-//    float a = (1 - cos(time / 69 + sin(time / 29))) / 3 + .3;
-//    return half4(half3(r, g, b) + (sin(time * 3.12) + 0.7) * 0.4, a);
-    return vert.color;
+    float4 n = vert.normal;
+    float4 c = vert.color;
+    float4 light = state.light;
+    float intensity = n.x * light.x + n.y * light.y + n.z * light.z;
+
+    return half4(intensity * c + float4(0.2, 0.235, 0.36, 1.0));
 }
 
 vertex VertexOut texture_vertex(const device VertexIn* vertex_array [[ buffer(0) ]],

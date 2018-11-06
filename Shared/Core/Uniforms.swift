@@ -21,4 +21,5 @@ struct State {
     var nonlinearity: Float
     
     var projectionMatrix: float4x4
+    var light: float4
 }

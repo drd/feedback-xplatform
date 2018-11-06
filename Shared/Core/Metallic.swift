@@ -24,6 +24,8 @@ class Feedbackian {
     var texturePipelineState: MTLRenderPipelineState! = nil
     var feedbackPipelineState: MTLRenderPipelineState! = nil
     var finalPipelineState: MTLRenderPipelineState! = nil
+    
+    var depthStencilState: MTLDepthStencilState! = nil
 
     var commandQueue: MTLCommandQueue! = nil
     
@@ -40,7 +42,8 @@ class Feedbackian {
     
     var mainTexture: MTLTexture! = nil
     var tempTexture: MTLTexture! = nil
-    
+    var depthTexture: MTLTexture! = nil
+
     var recorder: MetalVideoRecorder! = nil
     
     var cleared = false
@@ -52,7 +55,8 @@ class Feedbackian {
                              aspectRatio: 1.0,
                              colorOffset: Float(drand48() * 5) + 3.7,
                              nonlinearity: 0.0,
-                             projectionMatrix: float4x4())
+                             projectionMatrix: float4x4(),
+                             light: float4())
 
     var projectionMatrix: float4x4!
     
@@ -75,7 +79,7 @@ class Feedbackian {
     var controls = Controls()
     var keySet: Set<Key>
     var sides = 3
-    var shape: Shape = CachedShape(shape: ParametricCurve()) //OutlinedPolygon(sides: 3, length: 0.7, width: 0.05))
+    var shape: Shape = ParametricCurve()
     
     // MARK: constructor
     
@@ -114,41 +118,14 @@ class Feedbackian {
         state.position = controls.position
         state.colorOffset = controls.colorOffset
         state.nonlinearity = controls.linearity // Float(sin(state.time))
-        state.projectionMatrix = modelMatrix()
-        
-        if keySet.contains(.Comma) {
-            sides -= 1
-            if (sides < 3) {
-                sides = 3
-            }
-            shape = CachedShape(shape: OutlinedPolygon(sides: sides, length: 0.7, width: 0.05))
-            let triangles = shape.geometry
-            let shapeDataSize = triangles.count * 3 * MemoryLayout<Vertex>.size
-            shapeVertexBuffer = device.makeBuffer(bytes: triangles,
-                                                  length: shapeDataSize,
-                                                  options: MTLResourceOptions())
-            shapeVertexBuffer.label = "Shape vertBuffer"
-
-        } else if keySet.contains(.Period) {
-            sides += 1
-            if (sides < 3) {
-                sides = 3
-            }
-            shape = CachedShape(shape: OutlinedPolygon(sides: sides, length: 0.7, width: 0.05))
-            let triangles = shape.geometry
-            let shapeDataSize = triangles.count * 3 * MemoryLayout<Vertex>.size
-            shapeVertexBuffer = device.makeBuffer(bytes: triangles,
-                                                  length: shapeDataSize,
-                                                  options: MTLResourceOptions())
-            shapeVertexBuffer.label = "Shape vertBuffer"
-
-        }
+        state.projectionMatrix = modelMatrix(state.time / 10)
+        state.light = float4(sin(state.time), cos(state.time), -sin(state.time), 1)
     }
     
-    func modelMatrix() -> float4x4 {
+    func modelMatrix(_ t: Float) -> float4x4 {
         var matrix = float4x4()
-        matrix.translate(positionX, y: positionY, z: positionZ)
-        matrix.rotateAroundX(rotationX, y: rotationY, z: rotationZ)
+        matrix.rotateAroundX(sin(t), y: -cos(t), z: cos(t))
+        matrix.translate(positionX, y: positionY, z: -0.3) // positionZ)
         matrix.scale(scale, y: scale, z: scale)
         return matrix
     }
@@ -161,56 +138,13 @@ class Feedbackian {
     }
     
     func copyShapeToBuffer() {
-        var outTriangles = [Vertex]()
-        let triangles = shape.geometry
-
-        let rX = state.time / 3.1
-        let rY = Float.pi / 3 + state.time / 2.33
-        let rZ = 2 * Float.pi / 3 + state.time  / 3.71
-        var matrix = float4x4()
-        matrix.translate(0, y: 0, z: 0.3)
-        matrix.rotateAroundX(rX, y: rY, z: rZ)
-
-        triangles.enumerated().forEach { (i, triangle) in
-            let v1 = triangle.v1
-            let v2 = triangle.v2
-            let v3 = triangle.v3
-            var rotated = matrix * float4(v1.x, v1.y, v1.z, 1)
-            
-            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-            rotated = matrix * float4(v2.x, v2.y, v2.z, 1)
-            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-            rotated = matrix * float4(v3.x, v3.y, v3.z, 1)
-            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-//            let rX = Float(i) / Float(triangles.count) * Float.pi + state.time / 3.1
-//            let rY = Float(i) / Float(triangles.count) * Float.pi + Float.pi / 3 + state.time / 2.33
-//            let rZ = Float(i) / Float(triangles.count) * Float.pi + 2 * Float.pi / 3 + state.time  / 3.71
-//            var matrix = float4x4()
-//            matrix.rotateAroundX(rX, y: rY, z: rZ)
-//            let v1 = triangle.v1
-//            let v2 = triangle.v2
-//            let v3 = triangle.v3
-//            var rotated = matrix * float4(v1.x, v1.y, v1.z, 1)
-//            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-//            rotated = matrix * float4(v2.x, v2.y, v2.z, 1)
-//            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-//            rotated = matrix * float4(v3.x, v3.y, v3.z, 1)
-//            outTriangles.append(Vertex(x: rotated.x, y: rotated.y, z: rotated.z))
-
-//            let outTriangle = Triangle(
-//                v1: triangle.v1,
-//                v2: triangle.v2,
-//                v3: triangle.v3,
-//                modelMatrix: matrix)
-//            outTriangles.append(outTriangle)
-        }
+        var outVertices = shape.geometry
         let bufferPointer = shapeVertexBuffer.contents()
-        let shapeBufferSize = outTriangles.count * MemoryLayout.size(ofValue: outTriangles[0])
-        memcpy(bufferPointer, &outTriangles, shapeBufferSize)
+        let shapeBufferSize = outVertices.count * MemoryLayout.size(ofValue: outVertices[0])
+        memcpy(bufferPointer, &outVertices, shapeBufferSize)
     }
     
     func setAspectRatio(_ size: CGSize, _ aspect: Float) {
-        print("Size!", size)
         viewportSize = size
         aspectRatio = aspect
         controls.setViewportSize(size)
@@ -316,12 +250,14 @@ class Feedbackian {
     private func renderShape(_ commandBuffer: MTLCommandBuffer) {
         // render pass 2: draw shape on tempTexture
         let renderPassDescriptor = MTLRenderPassDescriptor()
+        
         renderPassDescriptor.colorAttachments[0].texture = mainTexture
         renderPassDescriptor.colorAttachments[0].loadAction = cleared ? .load : .clear
         renderPassDescriptor.colorAttachments[0].storeAction = .store
         renderPassDescriptor.colorAttachments[0].clearColor =
             MTLClearColor.init(red: 0, green: 0, blue: 0, alpha: 1.0)
-        
+        renderPassDescriptor.depthAttachment.texture = depthTexture
+
         // encode this render to the command buffer
         let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
         renderEncoder.label = "Shape render encoder"
@@ -331,11 +267,15 @@ class Feedbackian {
         renderEncoder.setVertexBuffer(shapeVertexBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(uniformsBuffer, offset: 0, index: 0)
+        renderEncoder.setCullMode(MTLCullMode.back)
+        renderEncoder.setFrontFacing(.clockwise)
+        renderEncoder.setDepthStencilState(depthStencilState)
+        
 //        renderEncoder.setTriangleFillMode(.lines)
         // triangles: every 3 vertices is a shape; there will be 3 total
         renderEncoder.drawPrimitives(type: .triangle,
                                      vertexStart: 0,
-                                     vertexCount: shapeVertexBuffer.length / MemoryLayout<Float>.size / 3)
+                                     vertexCount: shapeVertexBuffer.length / MemoryLayout<Vertex>.size)
         
         renderEncoder.popDebugGroup()
         renderEncoder.endEncoding()
@@ -435,6 +375,10 @@ class Feedbackian {
         descriptor.storageMode = .private
         tempTexture = device.makeTexture(descriptor: descriptor)
         tempTexture.label = "Temp texture"
+        
+        descriptor.pixelFormat = .depth32Float
+        depthTexture = device.makeTexture(descriptor: descriptor)
+        depthTexture.label = "Depth texture"
     }
     
     private func initBuffers() {
@@ -456,9 +400,9 @@ class Feedbackian {
                                                 options: MTLResourceOptions())
         textureVertexBuffer.label = "Texture vertBuffer"
         
-        let triangles = shape.geometry
-        let shapeDataSize = triangles.count * 3 * MemoryLayout<Vertex>.size
-        shapeVertexBuffer = device.makeBuffer(bytes: triangles,
+        let vertices = shape.geometry
+        let shapeDataSize = vertices.count * MemoryLayout<Vertex>.size
+        shapeVertexBuffer = device.makeBuffer(bytes: vertices,
                                               length: shapeDataSize,
                                               options: MTLResourceOptions())
         shapeVertexBuffer.label = "Shape vertBuffer"
@@ -523,10 +467,10 @@ class Feedbackian {
         do {
             // shape pipeline
             let shapePipelineStateDescriptor = MTLRenderPipelineDescriptor()
+            shapePipelineStateDescriptor.label = "Shape pipeline"
             shapePipelineStateDescriptor.vertexFunction = shapeVertex
             shapePipelineStateDescriptor.fragmentFunction = shapeFragment
             shapePipelineStateDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-            shapePipelineStateDescriptor.label = "Shape pipeline"
             shapePipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
             shapePipelineStateDescriptor.colorAttachments[0].rgbBlendOperation = MTLBlendOperation.add;
             shapePipelineStateDescriptor.colorAttachments[0].alphaBlendOperation = MTLBlendOperation.add;
@@ -534,8 +478,32 @@ class Feedbackian {
             shapePipelineStateDescriptor.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactor.sourceAlpha;
             shapePipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactor.oneMinusSourceAlpha
             shapePipelineStateDescriptor.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactor.oneMinusSourceAlpha;
+//            let vertexDescriptor = MTLVertexDescriptor()
+//
+//            let vertexAttribute = MTLVertexAttributeDescriptor()
+//            vertexAttribute.format = .float3
+//            vertexAttribute.offset = 12
+//            vertexAttribute.bufferIndex = 0
+//            vertexDescriptor.attributes[1] = vertexAttribute
+////            vertexDescriptor.attributes[1] =
+////                name: "Normal",
+////                format: .float3,
+////                offset: 12,
+////                bufferIndex: 0)
+//            let bufferLayout = MTLVertexBufferLayoutDescriptor()
+//            bufferLayout.stride = 24
+//            vertexDescriptor.layouts[0] = bufferLayout
+            
+//            shapePipelineStateDescriptor.vertexDescriptor = vertexDescriptor
+            shapePipelineStateDescriptor.depthAttachmentPixelFormat = .depth32Float
             try shapePipelineState = device.makeRenderPipelineState(descriptor: shapePipelineStateDescriptor)
 
+            // depth
+            let depthStencilDescriptor = MTLDepthStencilDescriptor()
+            depthStencilDescriptor.depthCompareFunction = .lessEqual
+            depthStencilDescriptor.isDepthWriteEnabled = true
+            depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+            
             // texture pipeline
             let texturePipelineStateDescriptor = MTLRenderPipelineDescriptor()
             texturePipelineStateDescriptor.vertexFunction = textureVertex

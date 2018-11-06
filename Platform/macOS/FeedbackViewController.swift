@@ -20,7 +20,8 @@ class FeedbackViewController: NSViewController {
             mtkView.delegate = self
             mtkView.preferredFramesPerSecond = 30
             mtkView.clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
-            
+            mtkView.depthStencilPixelFormat = .depth32Float
+
             if let mtlLayer = mtkView.layer as? CAMetalLayer {
                 mtlLayer.framebufferOnly = false
             }
